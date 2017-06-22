@@ -1,6 +1,6 @@
 # README
 
-This is an empty README that needs to be edited. 
+
 
 Currently using ellc DoublePartial to try to write a workable means of running multiple data sets at once so the system returns multiple plots.
 
