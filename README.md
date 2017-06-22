@@ -2,6 +2,8 @@
 
 Repository to host work from Northwestern University REU students in the summer of 2017.
 
-I am writing this because the homework before this first week is over is to pull changes from adam’s repo to own directory then * update readme file * then submit pull request to Adam
+Project description:
+
+We are doing variable stars research, motivated by the upcoming LSST survey - a 10 year survey of the night sky that will find a huge number of eclipsing binaries and other variable stars. For this project, we are developing software to classify what we see (the variable stars), and we are creating a citizen science project on zooniverse to help!
 
 Tanner
