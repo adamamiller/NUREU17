@@ -1,0 +1,3 @@
+# README
+
+The Goal for the Target of Opportunity Strategy is to create a program that the LSST may use to detect kilonovas, merging NS-NS or NS-BH compact binaries, within expected areas of GW sources produced by LIGO. Given that LSST works from the UV spectrum to near IR, the program should be optimized to not only detect these kilonovas as quickly as possible, but it should search for kilonovas within all of the spectrum. While some papers have argued that either UV, optical, or near IR are the optimal spectrums to find kilonovas, there has not been distinct proof that one spectrum works better to detect these compact binaries. Therefore, we will have to try to work the entire spectrum of LSST that way we will have to optimal chance to detect these kilonovas. 
