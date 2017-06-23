@@ -42,12 +42,40 @@ errorListPrime = []
 for element in errorList:
     errorListPrime.append(float(element))
 
-errorVal = 0.1
-
 plt.errorbar(xListPrime, yListPrime, yerr = errorListPrime, fmt='ro', markersize=3) 
-
-# Label the plot with your own titles, make sure they are strings (enclosed in quotation marks)
 plt.title("Star 1 Light Curve")
+plt.xlabel("time")
+plt.ylabel("brightness")
+plt.show()
+
+xListSmallTime = []
+xListLargeTime = []
+
+yListSmallTime = []
+yListLargeTime = []
+
+errorListSmallTime = []
+errorListLargeTime = []
+
+length = len(xListPrime)
+for i in range(length):
+    if xListPrime[i] < 55600:
+        xListSmallTime.append(xListPrime[i])
+        yListSmallTime.append(yListPrime[i])
+        errorListSmallTime.append(errorListPrime[i])
+    else:
+        xListLargeTime.append(xListPrime[i])
+        yListLargeTime.append(yListPrime[i])
+        errorListLargeTime.append(errorListPrime[i])
+
+plt.errorbar(xListSmallTime, yListSmallTime, yerr = errorListSmallTime, fmt='ro', markersize=3) 
+plt.title("Star 1 Light Curve 1")
+plt.xlabel("time")
+plt.ylabel("brightness")
+plt.show()
+
+plt.errorbar(xListLargeTime, yListLargeTime, yerr = errorListLargeTime, fmt='ro', markersize=3) 
+plt.title("Star 1 Light Curve 2")
 plt.xlabel("time")
 plt.ylabel("brightness")
 plt.show()
