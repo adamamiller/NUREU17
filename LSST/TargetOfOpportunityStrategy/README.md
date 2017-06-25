@@ -1,6 +1,8 @@
 # README
 
 ## Target of Opportunity Strategy
+Project done by Kristopher Mortensen
+
 
 ### Goal
 
