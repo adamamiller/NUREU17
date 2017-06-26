@@ -1,5 +1,7 @@
 # README
 
+ 
+=======
 ## Target of Opportunity Strategy
 Project done by Kristopher Mortensen
 
@@ -11,3 +13,4 @@ The goal for the Target of Opportunity Strategy is to create a program that the 
 ### Basic Background: Kilonovas
 
 Kilonovas are compact binary mergers between either two neutron stars (NS-NS) or a neutron star and a black hole (NS-BH). When they merge they release large amounts of hot mass and energy in the form of eletromagnetic (EM) radiation. In additon, these mergers also are sources of gravitation waves due to the object having massive densities. The EM radiation given off by the kilonovas act as though they behave as transient stars like that of supernovas: short, bright burst in the beginning of the merger then slowly the light dimishes until it is too dark to detect anymore. 
+>>>>>>> upstream/master
