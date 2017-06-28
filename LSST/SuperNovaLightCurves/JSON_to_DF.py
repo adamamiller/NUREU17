@@ -26,9 +26,7 @@ def JSON_to_DataFrame(source):
 	DF = pd.DataFrame(photometry_clean)
 	DF.index.name = "Observation number"
 	DF = DF.loc[:, ['time', 'magnitude', 'e_magnitude', 'e_upper_magnitude', 'e_lower_magnitude', 'band', 'source', 'telescope']]
-	
-
-	#DF.to_hdf(SN_name + '.h5', "SN")
+	DF.to_hdf("../../../OSN_data/HDF5_data/" + SN_name + '.h5', "SN")
 	print(DF)
 
 
