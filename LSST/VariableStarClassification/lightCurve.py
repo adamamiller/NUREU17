@@ -12,6 +12,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
   
+"""
+Below is my most updated lightCurve plotting function => more general, i.e. works with a 
+more general data set; in particular, the previous version assumes the oid changes at 
+particular locations in the list, and the software of this new version determines that. 
+This version still assumes there are at least two unique object id's and no more than three.
+"""  
 def plotLightCurve(filename):
     """ This function works with time, mag, error and DOES filter by oid.
         Takes in four lists of data for each of the above mentioned things
@@ -116,6 +122,7 @@ def plotLightCurve(filename):
 
     # this block is not completely general
     # it assumes there is at least two unique oid's in the list (starData.txt's from IRSA)
+    # need to update
     newOID = oidList[index+1]
     while newOID == tempOID:
             index += 1
@@ -179,6 +186,7 @@ def plotLightCurve(filename):
     plt.ylabel("brightness")
     plt.show()
 
+# oldNews
 def plotLightCurveOld(filename):
     """ This function just works with time, mag, and error,
         i.e. does not filter by oid.
