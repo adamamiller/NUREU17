@@ -118,6 +118,8 @@ def plotLightCurve(filename):
     plt.ylabel("brightness")
     plt.show()
 
+    """
+
     # here we need to find the index of the next unique oid
 
     # this block is not completely general
@@ -128,63 +130,55 @@ def plotLightCurve(filename):
             index += 1
             newOID = oidList[index+1]
 
-    # when here (out of above loop) newOID, is truly 'new'
-
-    firstIndexOfNextOid = index+1
-
-    tempOID = oidList[firstIndexOfNextOid]
-    for i in range(oidListLength):
-        if tempOID == oidList[i]:
-            xListTemp.append(xList[i])
-            yListTemp.append(yList[i])
-            errorListTemp.append(errorList[i])
-            if fidList[i] == 1:
-                fmtToBeUsed = 'go'
-            else:
-                fmtToBeUsed = 'ro'
-
-    # plot for oid #2
-    plt.errorbar(xListTemp, yListTemp, yerr = errorListTemp, fmt=fmtToBeUsed, markersize=3) 
-    plt.title("Star 2 Light Curve for Object {}".format(tempOID))
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
-
-    # need to find first index of next OID (the third oid in the list, if it exists)
-    # need to also make code for if 2nd oid does not exist (general version - but acutally
-    # for our purposes here, we don't need that)
+    """
 
     newOID = oidList[index+1]
     counter = 0
-    # listLength - (index+1) works!
     while newOID == tempOID and counter < (listLength - (index+1)):
         index += 1
         newOID = oidList[index+1]
         counter += 1
 
-    firstIndexOfNextOid = index+1
+    # when here (out of above loop), newOID is truly 'new', if it is :)
+    # if there is only one oid, code will not enter through next if statement and will be done
+    # as desired
 
-    # because repeating code (i.e. copy & pasting this => could use a loop -
-    # could do so by figuring out before the loop how many unique OID's
-    # then looping that many times)
+    while newOID != tempOID: # <- most recent change
 
-    tempOID = oidList[firstIndexOfNextOid]
-    for i in range(oidListLength):
-        if tempOID == oidList[i]:
-            xListTemp.append(xList[i])
-            yListTemp.append(yList[i])
-            errorListTemp.append(errorList[i])
-            if fidList[i] == 1:
-                fmtToBeUsed = 'go'
-            else:
-                fmtToBeUsed = 'ro'
+        firstIndexOfNextOid = index+1
 
-    # plot for oid #3
-    plt.errorbar(xListTemp, yListTemp, yerr = errorListTemp, fmt=fmtToBeUsed, markersize=3) 
-    plt.title("Star 2 Light Curve for Object {}".format(tempOID))
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
+        tempOID = oidList[firstIndexOfNextOid]
+        for i in range(oidListLength):
+            if tempOID == oidList[i]:
+                xListTemp.append(xList[i])
+                yListTemp.append(yList[i])
+                errorListTemp.append(errorList[i])
+                if fidList[i] == 1:
+                    fmtToBeUsed = 'go'
+                else:
+                    fmtToBeUsed = 'ro'
+
+        plt.errorbar(xListTemp, yListTemp, yerr = errorListTemp, fmt=fmtToBeUsed, markersize=3) 
+        plt.title("Star 2 Light Curve for Object {}".format(tempOID))
+        plt.xlabel("time")
+        plt.ylabel("brightness")
+        plt.show()
+
+        # need to find first index of next OID (the third oid in the list, if it exists)
+        # need to also make code for if 2nd oid does not exist (general version - but acutally
+        # for our purposes here, we don't need that)
+
+        newOID = oidList[index+1] # initially assigning newOID the same value as tempOID
+        counter = 0
+        # listLength - (index+1) works!
+        # newOID is (perhaps) altered in following while loop
+        while newOID == tempOID and counter < (listLength - (index+1)):
+            index += 1
+            newOID = oidList[index+1]
+            counter += 1
+
+        firstIndexOfNextOid = index+1
+        newOID = oidList[firstIndexOfNextOid]
 
 # oldNews
 def plotLightCurveOld(filename):
@@ -263,3 +257,4 @@ def plotLightCurveOld(filename):
 if __name__ == '__main__':
     filename = input("Enter the data file name: ")
     plotLightCurve(filename)
+    
