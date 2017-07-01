@@ -10,9 +10,26 @@
 """
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.optimize import curve_fit
+from astropy.table import Column, Table
+from cesium import featurize
+#from scipy.optimize import curve_fit
+
+#cesium.featurize.featurize_time_series(…) #example from cesium website
+
+def printFrequency(filename): # give it star2.tbl to featurize for star 2
+
+    features_to_use = ["freq1_freq"]
+
+    dataTable = Table.read(filename, format='ipac')
+
+    fset_cesium = featurize.featurize_time_series(times=dataTable["obsmjd"],
+                                                  values=dataTable["mag_autocorr"],
+                                                  errors=dataTable["magerr_auto"],
+                                                  features_to_use=features_to_use)
+                                                
+    print(fset_cesium)
   
-def plotLightCurve(filename):
+def plotLightCurve(filename, period):
     """ This function works with time, mag, error and DOES filter by oid.
         Takes in four lists of data for each of the above mentioned things
         and then makes of light curves (one for each object ID).
@@ -21,7 +38,8 @@ def plotLightCurve(filename):
         of object ID's!
 
         Arguments:
-            filename (string) : name of data txt file       
+            filename (string) : name of data txt file    
+            period (float) : the period of the light curve for phase folding   
     """
 
     xList = []
@@ -97,11 +115,18 @@ def plotLightCurve(filename):
             else:
                 fmtToBeUsed = 'ro'
 
+    xListTempLength = len(xListTemp)
+
+    # Now let's "normalize," if you will, for phase-folding
+    xListPhaseFolded = []
+    for i in range(xListTempLength):
+        xListPhaseFolded.append((xListTemp[i] % period) / period)
+
     # plot for the first OID
-    plt.errorbar(xListTemp, yListTemp, yerr = errorListTemp, fmt=fmtToBeUsed, markersize=3) 
+    plt.errorbar(xListPhaseFolded, yListTemp, yerr = errorListTemp, fmt=fmtToBeUsed, markersize=3) 
 
     # use .format
-    plt.title("Star 2 Light Curve for Object {}".format(tempOID))
+    plt.title("Light Curve for Object {}".format(tempOID))
     plt.xlabel("time")
     plt.ylabel("brightness")
     plt.show()
@@ -130,8 +155,15 @@ def plotLightCurve(filename):
                 else:
                     fmtToBeUsed = 'ro'
 
-        plt.errorbar(xListTemp, yListTemp, yerr = errorListTemp, fmt=fmtToBeUsed, markersize=3) 
-        plt.title("Star 2 Light Curve for Object {}".format(tempOID))
+        xListTempLength = len(xListTemp)
+
+        # Now let's "normalize," if you will, for phase-folding
+        xListPhaseFolded = []
+        for i in range(xListTempLength):
+            xListPhaseFolded.append((xListTemp[i] % period) / period)
+
+        plt.errorbar(xListPhaseFolded, yListTemp, yerr = errorListTemp, fmt=fmtToBeUsed, markersize=3) 
+        plt.title("Light Curve for Object {}".format(tempOID))
         plt.xlabel("time")
         plt.ylabel("brightness")
         plt.show()
@@ -148,80 +180,15 @@ def plotLightCurve(filename):
         firstIndexOfNextOid = index+1
         newOID = oidList[firstIndexOfNextOid]
 
-# oldNews
-def plotLightCurveOld(filename):
-    """ This function just works with time, mag, and error,
-        i.e. does not filter by oid.
-
-        Arguments:
-            filename (string) : name of data txt file       
-    """
-
-    xList = []
-    yList = []
-    errorList = []
-
-    fin = open(filename)
-    for line in fin:
-        #line = line.strip()
-        line = line.split() # Splits each line into constituent numbers. 
-        xList.append(line[0])
-        yList.append(line[1])
-        errorList.append(line[2])
-    fin.close()
-
-    xListPrime = []
-    for element in xList:
-        xListPrime.append(float(element))
-
-    yListPrime = []
-    for element in yList:
-        yListPrime.append(float(element))
-
-    errorListPrime = []
-    for element in errorList:
-        errorListPrime.append(float(element))
-
-    plt.errorbar(xListPrime, yListPrime, yerr = errorListPrime, fmt='ro', markersize=3) 
-    plt.title("Star 1 Light Curve")
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
-
-    timeCutOff = int(input("Enter time cut-off by looking at first plot: "))
-
-    xListSmallTime = []
-    xListLargeTime = []
-
-    yListSmallTime = []
-    yListLargeTime = []
-
-    errorListSmallTime = []
-    errorListLargeTime = []
-
-    length = len(xListPrime)
-    for i in range(length):
-        if xListPrime[i] < timeCutOff:
-            xListSmallTime.append(xListPrime[i])
-            yListSmallTime.append(yListPrime[i])
-            errorListSmallTime.append(errorListPrime[i])
-        else:
-            xListLargeTime.append(xListPrime[i])
-            yListLargeTime.append(yListPrime[i])
-            errorListLargeTime.append(errorListPrime[i])
-
-    plt.errorbar(xListSmallTime, yListSmallTime, yerr = errorListSmallTime, fmt='ro', markersize=3) 
-    plt.title("Star 1 Light Curve 1")
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
-
-    plt.errorbar(xListLargeTime, yListLargeTime, yerr = errorListLargeTime, fmt='ro', markersize=3) 
-    plt.title("Star 1 Light Curve 2")
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
 
 if __name__ == '__main__':
-    filename = input("Enter the data file name: ")
-    plotLightCurve(filename)
+    fileNameForCesium = input("Enter .tbl filename: ")
+    printFrequency(fileNameForCesium)
+    frequency = float(input("Enter the frequency: "))
+    period = 1 / frequency
+    
+    filename = input("Enter the .txt data file name: ")
+    plotLightCurve(filename, period)
+
+    # check if period from here matches period from IRSA
+
