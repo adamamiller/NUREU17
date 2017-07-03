@@ -16,11 +16,11 @@ from cesium import featurize
 
 #cesium.featurize.featurize_time_series(…) #example from cesium website
 
-def printFrequency(filename): # give it star2.tbl to featurize for star 2
+how to get this way to work?
+
+def printFrequency(dataTable): # give it star2.tbl to featurize for star 2
 
     features_to_use = ["freq1_freq"]
-
-    dataTable = Table.read(filename, format='ipac')
 
     fset_cesium = featurize.featurize_time_series(times=dataTable["obsmjd"],
                                                   values=dataTable["mag_autocorr"],
@@ -29,7 +29,7 @@ def printFrequency(filename): # give it star2.tbl to featurize for star 2
                                                 
     print(fset_cesium)
   
-def plotLightCurve(filename, period):
+def plotLightCurve(dataTable, period):
     """ This function works with time, mag, error and DOES filter by oid.
         Takes in four lists of data for each of the above mentioned things
         and then makes of light curves (one for each object ID).
@@ -42,55 +42,26 @@ def plotLightCurve(filename, period):
             period (float) : the period of the light curve for phase folding   
     """
 
+    times = dataTable["obsmjd"] # -> xList
+    values = dataTable["mag_autocorr"] # -> yList
+    errors = dataTable["magerr_auto"]
+    oids = dataTable["oid"]
+    fids = dataTable["fid"]
+
     xList = []
     yList = []
     errorList = []
     oidList = []
     fidList = []
 
-    fin = open(filename)
-    for line in fin:
-        line = line.split() # Splits each line into constituent numbers. 
-        xList.append(line[0])
-        yList.append(line[1])
-        errorList.append(line[2])
-        oidList.append(line[3])
-        fidList.append(line[4])
-    fin.close()
+    length = len(times)
 
-    xListPrime = []
-    for element in xList:
-        xListPrime.append(float(element))
-    xList = xListPrime # so can use 'xList' instead of 'xListPrime' going forward
-
-    yListPrime = []
-    for element in yList:
-        yListPrime.append(float(element))
-    yList = yListPrime
-
-    errorListPrime = []
-    for element in errorList:
-        errorListPrime.append(float(element))
-    errorList = errorListPrime
-
-    oidListPrime = []
-    for element in oidList:
-        oidListPrime.append(int(element))
-    oidList = oidListPrime
-
-    fidListPrime = []
-    for element in fidList:
-        fidListPrime.append(int(element))
-    fidList = fidListPrime
-
-    """
-    This plots all objects ID's on same plot:
-    plt.errorbar(xList, yList, yerr = errorList, fmt='ro', markersize=3) 
-    plt.title("Star 2 Light Curve")
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
-    """
+    for i in range(length):
+        xList.append(times[i])
+        yList.append(values[i])
+        errorList.append(errors[i])
+        oidList.append(oids[i])
+        fidList.append(fids[i])
 
     fmtToBeUsed = 'ro'
     xListTemp = []
@@ -117,7 +88,7 @@ def plotLightCurve(filename, period):
 
     xListTempLength = len(xListTemp)
 
-    # Now let's "normalize," if you will, for phase-folding
+    # phase-folding
     xListPhaseFolded = []
     for i in range(xListTempLength):
         xListPhaseFolded.append((xListTemp[i] % period) / period)
@@ -157,7 +128,7 @@ def plotLightCurve(filename, period):
 
         xListTempLength = len(xListTemp)
 
-        # Now let's "normalize," if you will, for phase-folding
+        # phase-folding
         xListPhaseFolded = []
         for i in range(xListTempLength):
             xListPhaseFolded.append((xListTemp[i] % period) / period)
@@ -182,13 +153,32 @@ def plotLightCurve(filename, period):
 
 
 if __name__ == '__main__':
-    fileNameForCesium = input("Enter .tbl filename: ")
-    printFrequency(fileNameForCesium)
-    frequency = float(input("Enter the frequency: "))
-    period = 1 / frequency
     
-    filename = input("Enter the .txt data file name: ")
-    plotLightCurve(filename, period)
-
+    filename = input("Enter .tbl filename: ")
+    dataTable = Table.read(filename, format='ipac')
+    printFrequency(dataTable)
+    frequency = float(input("Enter the frequency: "))
+    period = 1/frequency
+    plotLightCurve(dataTable, period)
+    
     # check if period from here matches period from IRSA
 
+    """
+    dataTable = Table.read("star2.tbl", format='ipac')
+
+    times=dataTable["obsmjd"] # what the hell is this? a 1D array?
+    values=dataTable["mag_autocorr"]
+    errors=dataTable["magerr_auto"]
+
+    print(times[0])
+    print(len(times))
+
+    # this works! => can throw data into lists and use my current code
+    # or can skip the extra step of using lists
+    """
+
+
+
+    # don't need to read data table twice
+    # working on making code only need the .tbl file
+    # check if it works next time I code
