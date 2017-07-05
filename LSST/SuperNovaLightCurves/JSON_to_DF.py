@@ -4,7 +4,7 @@ import os
 import json
 import sys
 
-source = sys.argv[1]
+
 
 def JSON_to_DataFrame(source):
 	
@@ -34,10 +34,13 @@ def JSON_to_DataFrame(source):
 	DF.e_magnitude = DF.e_magnitude.apply(float)
 	DF.e_upper_magnitude = DF.e_upper_magnitude.apply(float)
 	DF.e_lower_magnitude = DF.e_lower_magnitude.apply(float)
+
+
 	
 	#save Dataframe as HDF5 file
 	DF.to_hdf("../../../OSN_data/HDF5_data/" + SN_name + '.h5', "SN")
 	return DF
+
 
 
 
