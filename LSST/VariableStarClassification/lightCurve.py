@@ -1,6 +1,6 @@
 """ lightCurve.py 
 
-    This purpose of this program is to produce a phase-folded light curves (with error bars) 
+    This purpose of this program is to produce phase-folded light curves (with error bars) 
     using data downloaded from the Caltech IRSA website.
     
     Language: Python 3
@@ -12,13 +12,16 @@
 """
 import matplotlib.pyplot as plt
 import numpy as np
-from astropy.table import Column, Table # how to import the other way?
+from astropy.table import Column, Table 
 from cesium import featurize
-#from scipy.optimize import curve_fit
 
-#cesium.featurize.featurize_time_series(…) #example from cesium website
+def printFrequency(dataTable): 
+    """ This function obtain the frequency using cesium, and this implies the period!
 
-def printFrequency(dataTable): # give it star2.tbl to featurize for star 2
+        Arguments:
+            dataTable (array-like) : this is the .tbl data file downloaded from Caltech
+            IRSA website
+    """
 
     features_to_use = ["freq1_freq"]
 
@@ -30,17 +33,17 @@ def printFrequency(dataTable): # give it star2.tbl to featurize for star 2
     print(fset_cesium)
   
 def plotLightCurve(dataTable, period):
-    """ This function works with time, mag, error and DOES filter by oid.
-        Takes in four lists of data for each of the above mentioned things
-        and then makes of light curves (one for each object ID).
-        
-        Note: This function is most general, i.e. it can deal with sources with any number 
-        of object ID's!
+    """ This is a fully general light curve plotting function that works with the dataTable
+        downloaded from the Caltech IRSA website to produce phase-folded light curves for 
+        each oid.
+
+        Caltech IRSA website: http://irsa.ipac.caltech.edu/cgi-bin/Gator/nph-scan?projshort=PTF
 
         Arguments:
-            filename (string) : name of data txt file    
-            period (float) : the period of the light curve for phase folding   
+            dataTable (array-like) : data table from Caltech IRSA website (.tbl)   
+            period (float) : the period of the light curve for phase folding (obtained with cesium) 
     """
+
     times = dataTable["obsmjd"] # -> xList
     values = dataTable["mag_autocorr"] # -> yList
     errors = dataTable["magerr_auto"]
@@ -128,5 +131,6 @@ if __name__ == '__main__':
     period = 1/frequency
     plotLightCurve(dataTable, period)
     print("period:", period)
+    
    
 
