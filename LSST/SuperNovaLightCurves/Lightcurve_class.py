@@ -2,48 +2,85 @@
 from scipy.optimize import curve_fit
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+from JSON_to_DF import JSON_to_DataFrame
+import ntpath
+import json
+import pandas as pd
+
+class Supernovae:
+	
+
+	def __init__(self, path):
+		self.name = os.path.splitext(os.path.basename(path))[0]
+		self.path = path
+		
+
+	def meta_data(self):
+		file_ = open(self.path)
+		data = json.load(file_)
+		self.references = pd.DataFrame((data[self.name]['sources']))
+		self.z = pd.DataFrame(data[self.name]['redshift']).value[0]
+		
+	def load_LightCurves(self):
+			df = JSON_to_DataFrame(self.path)
+			band_ref = df[['band', 'source']]
+			pairs = []
+			for row in band_ref.iterrows():
+				if(pd.isnull(row[1]['band'])):
+					continue
+				element = (row[1]['band'], row[1]['source'])
+				if(element not in pairs):
+					pairs.append(element)
+			Lightcurves = {}
+			for x in pairs:
+				data = df[df.band == x[0]]
+				data = data[data.source == x[1]]
+				label = str(x[0]) + '_' + str(x[1])
+				keys = x[1].split(',')
+				Lightcurves[label] = filter_lightcurve(data.time.values, data.magnitude.values, data.e_magnitude.values, str(x[0]), keys)
+			self.Lightcurves = Lightcurves
+
+					
 
 
+	
 
-class Lightcurve:
+	
+
+
+class filter_lightcurve():
 	
 	#Lightcurve object constructor
-	def __init__(self, time, mag , mag_err, band, data_type):
+	def __init__(self, time, mag , mag_err, mag_upper=None, mag_lower=None, band, keys, is_mag=True):
+		#store time and band
+		self.keys = keys
+		self.time = time
+		self.band = band
 		#If data is passed as magnitudes, convert to flux
-		if(data_type == 'mag'):
-			self.time = time
+		if(is_mag):
 			self.flux = self.mag_to_flux(mag)
-			self.flux_err = self.mag_err_to_flux_err(mag, mag_err, self.flux)
-			self.band = band
-		#If data is passed as flux, no conversion necessary
-		elif(data_type == 'flux'):
-			self.time = time
+			self.flux_err = self.mag_err_to_flux_err(mag_err, self.flux)
+		else:
 			self.flux = mag
 			self.flux_err = mag_err
-			self.band = band
-		#Error thrown is type not specified correctly
-		else:
-			raise ValueError('data type must be either "mag" or "flux"')
-
-		#shift start times to a zero point
+		#shift start times to start at zero 
 		self.time = self.time - min(self.time)
-
 
 	#necessary conversion functions
 	@staticmethod
 	def mag_to_flux(mag):
 		return 10**(-2*mag / 5) 
-
 	
-	def mag_err_to_flux_err(self, mag, mag_err, flux):
-		mag_max = mag + mag_err
-		flux_max = self.mag_to_flux(mag_max)
-		flux_error = flux_max - flux
-		return flux_error
+	@staticmethod
+	def mag_err_to_flux_err(mag_err, flux):
+		const = np.log(10)/2.5
+		return const * mag_err * flux
+		
 	
 
 	#Function to calculate RMSE, given a fit function
-	def calc_RMSE_func(self, flux, times, flux_errors, band, fit, degree=0):
+	def calc_Rchi2(self, flux, times, flux_errors, band, fit, degree=0):
 		flux_predictions = []
 		#loop to run 'leave one out' CV
 		for ind, f in enumerate(flux):
@@ -62,20 +99,17 @@ class Lightcurve:
 		
 		#Root Mean Square Error calculations
 		dif = (flux_predictions - flux)/flux_errors
-		temp = np.sum((flux_predictions - flux)**2)
+		temp = np.sum((dif)**2)
 		temp = temp / (len(flux))
-		RMSE = np.sqrt(temp)
-		return RMSE
+		Rchi2 = np.sqrt(temp)
+		return Rchi2
 
 
-	#create polynomial function given degree
+	#create polynomial fit function given degree
 	def polynomial_func(self, degree):
-		Coeffs = np.polyfit(self.time, self.flux, degree)
+		Coeffs = np.polyfit(self.time, self.flux, degree, w=self.flux_err)
 		f = np.poly1d(Coeffs)
 		return f
-
-
-
 
 	# N degree polynomial fit and return RMSE
 	def polynomial_fit_plot(self, degree):
@@ -91,20 +125,20 @@ class Lightcurve:
 		plt.xlabel('time (days)')
 		plt.ylabel('relative flux')
 		plt.show()
-		return self.calc_RMSE_func(self.flux, self.time, self.flux_err, self.band, f, degree=degree)
+		return self.calc_Rchi2(self.flux, self.time, self.flux_err, self.band, f, degree=degree)
 	
-	
-
-
 	#initialize kapernka functin paramater bounds, and priors
 	kap_param_bounds = ([10*-5,10*-5,0,0,0,0], [1000,100,100,100,100,100])
 	kap_prior = {
-			'R' : [50, 20, 20, 50, 50, 50],
+			'Rc' : [50, 20, 20, 50, 50, 50],
 			'g' : [40,20,10,40,1,100],
-			'I' : [100, 20, 20, 50, 50, 50]
+			'I' : [100, 20, 20, 50, 50, 50],
+			'J' : [50, 20, 20, 50, 50, 50],
+			'B' : [50, 20, 20, 50, 50, 50]
+
 		  }
 
-	#Kapernka function
+	#Kapernka model
 	def Kapernka_func(self, t, A, B, t_0, t_1, Tfall, Trise):
 		
 		first = A * (1 + (B * (t - t_1)*(t - t_1)))
@@ -113,18 +147,36 @@ class Lightcurve:
 		third = 1 + np.exp(var / Trise)
 		return first * (second / third)
 
-	#Plot kapernka best fit and return RMSE
+	#Plot kapernka best fit and return Rchi2
 	def Kapernka_fit_plot(self):
 
-		fitCoeffs, Covars = curve_fit(self.Kapernka_func, self.time, self.flux, self.kap_prior[self.band], bounds=self.kap_param_bounds)
+		fitCoeffs, Covars = curve_fit(self.Kapernka_func, self.time, self.flux, self.kap_prior[self.band], sigma=self.flux_err, bounds=self.kap_param_bounds)
 		bft = np.linspace(self.time[0], self.time[-1])
 		bestfit_flux = self.Kapernka_func(bft, fitCoeffs[0], fitCoeffs[1], fitCoeffs[2], fitCoeffs[3], fitCoeffs[4],fitCoeffs[5])
 
 		plt.errorbar(self.time, self.flux, yerr=self.flux_err, color='blue', label= self.band, fmt = 'o', markersize = 2.5)
 		plt.plot(bft, bestfit_flux, color = 'blue', label ='best fit')
 		plt.show()
-		return self.calc_RMSE_func(self.flux, self.time, self.flux_err, self.band, self.Kapernka_func)
+		return self.calc_Rchi2(self.flux, self.time, self.flux_err, self.band, self.Kapernka_func)
 
+	#Bazin model
+	def Bazin_func(self, t, A, t_0, Trise, Tfall, a1, a2):
+		first = A * (1 + (a1 * (t - t_0)) + (a2 * (t - t_0)))
+		var = - (t - t_0)
+		second = np.exp(var / Tfall)
+		third =  1 + np.exp(var / Trise)  
+		return first * (second / third)
+
+	#Plot Bazin best fit and return Rchi2
+	def Bazin_fit_plot(self):
+		fitCoeffs, Covars = curve_fit(self.Bazin_func, self.time, self.flux, self.kap_prior[self.band], sigma=self.flux_err,  bounds=self.kap_param_bounds)
+		bft = np.linspace(self.time[0], self.time[-1])
+		bestfit_flux = self.Bazin_func(bft, fitCoeffs[0], fitCoeffs[1], fitCoeffs[2], fitCoeffs[3], fitCoeffs[4],fitCoeffs[5])
+
+		plt.errorbar(self.time, self.flux, yerr=self.flux_err, color='blue', label= self.band, fmt = 'o', markersize = 2.5)
+		plt.plot(bft, bestfit_flux, color = 'blue', label ='best fit')
+		plt.show()
+		return self.calc_Rchi2(self.flux, self.time, self.flux_err, self.band, self.Bazin_func)
 
 
 

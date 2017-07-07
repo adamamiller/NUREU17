@@ -34,7 +34,7 @@ def JSON_to_DataFrame(source):
 	DF.e_magnitude = DF.e_magnitude.apply(float)
 	DF.e_upper_magnitude = DF.e_upper_magnitude.apply(float)
 	DF.e_lower_magnitude = DF.e_lower_magnitude.apply(float)
-
+	file_.close()
 
 	
 	#save Dataframe as HDF5 file
