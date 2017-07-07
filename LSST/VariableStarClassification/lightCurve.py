@@ -1,99 +1,54 @@
 """ lightCurve.py 
 
-    This purpose of this program is to produce a light curve with error bars.
+    This purpose of this program is to produce phase-folded light curves (with error bars) 
+    using data downloaded from the Caltech IRSA website.
+    
     Language: Python 3
 
     Tanner Leighton
 
-    Written for CIERA Summer Internship, Northwestern University.
-    6/25/17
+    Written for CIERA Summer Internship - Variable Star Classification 
+    Northwestern University
 """
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.optimize import curve_fit
+from astropy.table import Column, Table 
+from cesium import featurize
 
-def plotLightCurve(filename):
-    """ This function just works with time, mag, and error,
-        i.e. does not filter by oid.
+def printFrequency(dataTable): 
+    """ This function obtain the frequency using cesium, and this implies the period!
 
         Arguments:
-            filename (string) : name of data txt file       
+            dataTable (array-like) : this is the .tbl data file downloaded from Caltech
+            IRSA website
     """
 
-    xList = []
-    yList = []
-    errorList = []
+    features_to_use = ["freq1_freq"]
 
-    fin = open(filename)
-    for line in fin:
-        #line = line.strip()
-        line = line.split() # Splits each line into constituent numbers. 
-        xList.append(line[0])
-        yList.append(line[1])
-        errorList.append(line[2])
-    fin.close()
-
-    xListPrime = []
-    for element in xList:
-        xListPrime.append(float(element))
-
-    yListPrime = []
-    for element in yList:
-        yListPrime.append(float(element))
-
-    errorListPrime = []
-    for element in errorList:
-        errorListPrime.append(float(element))
-
-    plt.errorbar(xListPrime, yListPrime, yerr = errorListPrime, fmt='ro', markersize=3) 
-    plt.title("Star 1 Light Curve")
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
-
-    timeCutOff = int(input("Enter time cut-off by looking at first plot: "))
-
-    xListSmallTime = []
-    xListLargeTime = []
-
-    yListSmallTime = []
-    yListLargeTime = []
-
-    errorListSmallTime = []
-    errorListLargeTime = []
-
-    length = len(xListPrime)
-    for i in range(length):
-        if xListPrime[i] < timeCutOff:
-            xListSmallTime.append(xListPrime[i])
-            yListSmallTime.append(yListPrime[i])
-            errorListSmallTime.append(errorListPrime[i])
-        else:
-            xListLargeTime.append(xListPrime[i])
-            yListLargeTime.append(yListPrime[i])
-            errorListLargeTime.append(errorListPrime[i])
-
-    plt.errorbar(xListSmallTime, yListSmallTime, yerr = errorListSmallTime, fmt='ro', markersize=3) 
-    plt.title("Star 1 Light Curve 1")
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
-
-    plt.errorbar(xListLargeTime, yListLargeTime, yerr = errorListLargeTime, fmt='ro', markersize=3) 
-    plt.title("Star 1 Light Curve 2")
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
+    fset_cesium = featurize.featurize_time_series(times=dataTable["obsmjd"],
+                                                  values=dataTable["mag_autocorr"],
+                                                  errors=dataTable["magerr_auto"],
+                                                  features_to_use=features_to_use)
+                                                
+    print(fset_cesium)
   
-def plotLightCurvePrime(filename):
-    """ This function works with time, mag, error and DOES filter by oid.
-        Takes in four lists of data for each of the above mentioned things
-        and then makes three plots (of the three objects), which is what
-        is meant by filtering by oid
+def plotLightCurve(dataTable, period):
+    """ This is a fully general light curve plotting function that works with the dataTable
+        downloaded from the Caltech IRSA website to produce phase-folded light curves for 
+        each oid.
+
+        Caltech IRSA website: http://irsa.ipac.caltech.edu/cgi-bin/Gator/nph-scan?projshort=PTF
 
         Arguments:
-            filename (string) : name of data txt file       
+            dataTable (array-like) : data table from Caltech IRSA website (.tbl)   
+            period (float) : the period of the light curve for phase folding (obtained with cesium) 
     """
+
+    times = dataTable["obsmjd"] # -> xList
+    values = dataTable["mag_autocorr"] # -> yList
+    errors = dataTable["magerr_auto"]
+    oids = dataTable["oid"]
+    fids = dataTable["fid"]
 
     xList = []
     yList = []
@@ -101,104 +56,81 @@ def plotLightCurvePrime(filename):
     oidList = []
     fidList = []
 
-    fin = open(filename)
-    for line in fin:
-        #line = line.strip()
-        line = line.split() # Splits each line into constituent numbers. 
-        xList.append(line[0])
-        yList.append(line[1])
-        errorList.append(line[2])
-        oidList.append(line[3])
-    fin.close()
+    length = len(times)
 
-    xListPrime = []
-    for element in xList:
-        xListPrime.append(float(element))
-    xList = xListPrime # so not using 'xListPrime' going forward
+    for i in range(length): # could turn this into list comprehensions to be more efficient
+        xList.append(times[i])
+        yList.append(values[i])
+        errorList.append(errors[i])
+        oidList.append(oids[i])
+        fidList.append(fids[i])   
 
-    yListPrime = []
-    for element in yList:
-        yListPrime.append(float(element))
-    yList = yListPrime
+    fmtToBeUsed = 'ro'
 
-    errorListPrime = []
-    for element in errorList:
-        errorListPrime.append(float(element))
-    errorList = errorListPrime
-
-    oidListPrime = []
-    for element in oidList:
-        oidListPrime.append(int(element))
-    oidList = oidListPrime
-
-    fidListPrime = []
-    for element in fidList:
-        fidListPrime.append(int(element))
-    fidList = fidListPrime
-
-    """
-    This plots all objects ID's on same plot:
-    plt.errorbar(xList, yList, yerr = errorList, fmt='ro', markersize=3) 
-    plt.title("Star 2 Light Curve")
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
-    """
-
-    xListTemp = []
-    yListTemp = []
-    errorListTemp = []
-
-    # first make the code for three oid's
-    # then generalize code so it works for any number
-    # (generalized code better but don't need to right now,
-    # not for what I am trying to do here)
-
-    tempOID = oidList[0]
-
+    # Let's make a variable called index (to represent the index of a list) and set it equal to 0.
+    index = 0
+    newOID = oidList[index]
+    tempOID = 0
     oidListLength = len(oidList)
+    listLength = oidListLength # better to use this generic name everywhere
 
-    for i in range(oidListLength):
-        if tempOID == oidList[i]:
-            xListTemp.append(xList[i])
-            yListTemp.append(yList[i])
-            errorListTemp.append(errorList[i])
+    while tempOID != newOID: # while loop because number of unique OID's is not fixed 
+        tempOID = newOID
+        xListTemp = []
+        yListTemp = []
+        errorListTemp = []
 
-    # plot for oid #1
-    plt.errorbar(xListTemp, yListTemp, yerr = errorListTemp, fmt='go', markersize=3) 
-    plt.title("Star 2 Light Curve for Object 226831060005494")
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
+        for i in range(oidListLength):
+            if tempOID == oidList[i]:
+                xListTemp.append(xList[i])
+                yListTemp.append(yList[i])
+                errorListTemp.append(errorList[i])
+                if fidList[i] == 1:
+                    fmtToBeUsed = 'go'
+                else:
+                    fmtToBeUsed = 'ro'
 
-    tempOID = oidList[1]
-    for i in range(oidListLength):
-        if tempOID == oidList[i]:
-            xListTemp.append(xList[i])
-            yListTemp.append(yList[i])
-            errorListTemp.append(errorList[i])
+        xListTempLength = len(xListTemp)
 
-    # plot for oid #2
-    plt.errorbar(xListTemp, yListTemp, yerr = errorListTemp, fmt='ro', markersize=3) 
-    plt.title("Star 2 Light Curve for Object 226832060006908")
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
+        # phase-folding
+        xListPhaseFolded = []
+        for i in range(xListTempLength):
+            xListPhaseFolded.append((xListTemp[i] % period) / period)
 
-    tempOID = oidList[10]
-    for i in range(oidListLength):
-        if tempOID == oidList[i]:
-            xListTemp.append(xList[i])
-            yListTemp.append(yList[i])
-            errorListTemp.append(errorList[i])
+        xListPhaseFoldedPlusOne = []
+        for element in xListPhaseFolded:
+            elementPrime = element + 1
+            xListPhaseFoldedPlusOne.append(elementPrime)
 
-    # plot for oid #3
-    plt.errorbar(xListTemp, yListTemp, yerr = errorListTemp, fmt='ro', markersize=3) 
-    plt.title("Star 2 Light Curve for Object 26832000005734")
-    plt.xlabel("time")
-    plt.ylabel("brightness")
-    plt.show()
+        # plotting phase-folded light curve
+        plt.errorbar(xListPhaseFolded, yListTemp, yerr=errorListTemp, fmt=fmtToBeUsed, markersize=3)
+        plt.errorbar(xListPhaseFoldedPlusOne, yListTemp, yerr=errorListTemp, fmt=fmtToBeUsed, markersize=3)
+        plt.gca().invert_yaxis() 
+        plt.title("Light Curve for Object {}".format(tempOID))
+        plt.xlabel("phase")
+        plt.ylabel("brightness (mag)")
+        plt.show()
+
+        newOID = oidList[index+1] 
+        # at this point, newOID might not be new oid, unless the first oid only showed up once
+        counter = 0
+        while newOID == tempOID and counter < (listLength - (index+1)):
+            index += 1
+            newOID = oidList[index+1]
+            counter += 1
+
+        firstIndexOfNextOid = index+1 
+
+        newOID = oidList[firstIndexOfNextOid]
 
 if __name__ == '__main__':
-    filename = input("Enter the data file name: ")
-    plotLightCurvePrime(filename)
+    filename = input("Enter .tbl filename: ")
+    dataTable = Table.read(filename, format='ipac')
+    printFrequency(dataTable)
+    frequency = float(input("Enter the frequency: "))
+    period = 1/frequency
+    plotLightCurve(dataTable, period)
+    print("period:", period)
+    
+   
+
