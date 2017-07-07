@@ -127,34 +127,6 @@ if __name__ == '__main__':
     frequency = float(input("Enter the frequency: "))
     period = 1/frequency
     plotLightCurve(dataTable, period)
-    
-    # check if period from here matches period from IRSA
-
-
-
-
-
+    print("period:", period)
    
-
-    
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
