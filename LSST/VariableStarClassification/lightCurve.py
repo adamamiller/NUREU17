@@ -131,6 +131,6 @@ if __name__ == '__main__':
     period = 1/frequency
     plotLightCurve(dataTable, period)
     print("period:", period)
-    
+
    
 
