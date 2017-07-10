@@ -38,7 +38,7 @@ def JSON_to_DataFrame(source):
 
 	
 	#save Dataframe as HDF5 file
-	DF.to_hdf("../../../OSN_data/HDF5_data/" + SN_name + '.h5', "SN")
+	DF.to_hdf("../../../OSC_data/HDF5_data/" + SN_name + '.h5', "SN")
 	return DF
 
 
