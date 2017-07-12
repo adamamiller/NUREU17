@@ -16,7 +16,7 @@ from astropy.table import Column, Table
 from cesium import featurize
 
 def printFrequency(dataTable): 
-    """ This function obtain the frequency using cesium, and this implies the period!
+    """ This function obtain the frequency using cesium, which implies the period.
 
         Arguments:
             dataTable (array-like) : this is the .tbl data file downloaded from Caltech
@@ -34,8 +34,8 @@ def printFrequency(dataTable):
   
 def plotLightCurve(dataTable, period):
     """ This is a fully general light curve plotting function that works with the dataTable
-        downloaded from the Caltech IRSA website to produce phase-folded light curves for 
-        each oid.
+        downloaded from the Caltech IRSA website to produce phase-folded light curves with 
+        error bars for each oid.
 
         Caltech IRSA website: http://irsa.ipac.caltech.edu/cgi-bin/Gator/nph-scan?projshort=PTF
 
@@ -44,84 +44,68 @@ def plotLightCurve(dataTable, period):
             period (float) : the period of the light curve for phase folding (obtained with cesium) 
     """
 
-    times = dataTable["obsmjd"] # -> xList
-    values = dataTable["mag_autocorr"] # -> yList
+    times = dataTable["obsmjd"] 
+    values = dataTable["mag_autocorr"] 
     errors = dataTable["magerr_auto"]
     oids = dataTable["oid"]
     fids = dataTable["fid"]
 
-    xList = []
-    yList = []
-    errorList = []
-    oidList = []
-    fidList = []
+    length = len(oids)  
+    oidsArray = np.empty(length)
 
-    length = len(times)
+    for i in range(length):
+        oidsArray[i] = oids[i]
 
-    for i in range(length): # could turn this into list comprehensions to be more efficient
-        xList.append(times[i])
-        yList.append(values[i])
-        errorList.append(errors[i])
-        oidList.append(oids[i])
-        fidList.append(fids[i])   
+    oidsArraySorted = np.empty(length)
+    oidsArraySorted = np.sort(oidsArray) 
 
     fmtToBeUsed = 'ro'
 
     # Let's make a variable called index (to represent the index of a list) and set it equal to 0.
     index = 0
-    newOID = oidList[index]
+    swapVar = 0
     tempOID = 0
-    oidListLength = len(oidList)
-    listLength = oidListLength # better to use this generic name everywhere
+    newOID = int(oidsArraySorted[index])
 
-    while tempOID != newOID: # while loop because number of unique OID's is not fixed 
-        tempOID = newOID
-        xListTemp = []
-        yListTemp = []
-        errorListTemp = []
+    while newOID != tempOID: # while loop because number of unique OID's is not fixed 
+        swapVar = newOID
+        tempOID = swapVar
 
-        for i in range(oidListLength):
-            if tempOID == oidList[i]:
-                xListTemp.append(xList[i])
-                yListTemp.append(yList[i])
-                errorListTemp.append(errorList[i])
-                if fidList[i] == 1:
-                    fmtToBeUsed = 'go'
-                else:
-                    fmtToBeUsed = 'ro'
+        indexesTempOID = np.where(dataTable[3][:] == tempOID)
+        fmtToBeUsedNumber = fids[indexesTempOID[0][0]]
 
-        xListTempLength = len(xListTemp)
+        if fmtToBeUsedNumber == 2:
+            fmtToBeUsed = 'ro'
+        else:
+            fmtToBeUsed = 'go'
 
         # phase-folding
-        xListPhaseFolded = []
-        for i in range(xListTempLength):
-            xListPhaseFolded.append((xListTemp[i] % period) / period)
+        tempLength = len(indexesTempOID[0])
+        timesTemp = np.empty(tempLength)
+        timesPhaseFolded = np.empty(tempLength)
+        timesTemp = times[indexesTempOID]
 
-        xListPhaseFoldedPlusOne = []
-        for element in xListPhaseFolded:
-            elementPrime = element + 1
-            xListPhaseFoldedPlusOne.append(elementPrime)
+        for i in range(tempLength):
+            timesPhaseFolded[i] = (timesTemp[i] % period) / period
 
-        # plotting phase-folded light curve
-        plt.errorbar(xListPhaseFolded, yListTemp, yerr=errorListTemp, fmt=fmtToBeUsed, markersize=3)
-        plt.errorbar(xListPhaseFoldedPlusOne, yListTemp, yerr=errorListTemp, fmt=fmtToBeUsed, markersize=3)
+        timesPhaseFoldedPlusOne = np.empty(tempLength)
+        for j in range(tempLength):
+            timesPhaseFoldedPlusOne[j] = timesPhaseFolded[j]+1
+
+        plt.errorbar(timesPhaseFolded, values[indexesTempOID], yerr=errors[indexesTempOID], fmt=fmtToBeUsed, markersize=3)
+        plt.errorbar(timesPhaseFoldedPlusOne, values[indexesTempOID], yerr=errors[indexesTempOID], fmt=fmtToBeUsed, markersize=3)
         plt.gca().invert_yaxis() 
         plt.title("Light Curve for Object {}".format(tempOID))
         plt.xlabel("phase")
         plt.ylabel("brightness (mag)")
         plt.show()
-
-        newOID = oidList[index+1] 
-        # at this point, newOID might not be new oid, unless the first oid only showed up once
-        counter = 0
-        while newOID == tempOID and counter < (listLength - (index+1)):
+        
+        index += 1
+        newOID = int(oidsArraySorted[index]) 
+        # at this point, newOID will equal tempOID, unless the there is only one oid of that variety
+        while (newOID == tempOID and index < (length-1)): 
             index += 1
-            newOID = oidList[index+1]
-            counter += 1
-
-        firstIndexOfNextOid = index+1 
-
-        newOID = oidList[firstIndexOfNextOid]
+            newOID = int(oidsArraySorted[index])
 
 if __name__ == '__main__':
     filename = input("Enter .tbl filename: ")
@@ -132,5 +116,9 @@ if __name__ == '__main__':
     plotLightCurve(dataTable, period)
     print("period:", period)
 
+
+
+    
+    
    
 
