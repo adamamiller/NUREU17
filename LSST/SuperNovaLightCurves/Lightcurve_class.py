@@ -10,7 +10,6 @@ import pandas as pd
 
 class Supernovae:
 	
-
 	def __init__(self, path):
 		self.name = os.path.splitext(os.path.basename(path))[0]
 		self.path = path

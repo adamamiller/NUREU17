@@ -20,6 +20,7 @@ def JSON_to_DataFrame(source):
 
 	#rid the data where 'upperlimit' is true
 	photometry_clean = [x for x in photometry if 'upperlimit' not in x]
+	photometry_clean = [x for x in photometry_clean if 'e_magnitude' in x]
 
 
 	#initialize and create a dataframe out of photometry data
