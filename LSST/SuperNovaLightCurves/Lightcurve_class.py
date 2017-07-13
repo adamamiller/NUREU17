@@ -88,7 +88,7 @@ class filter_lightcurve(Supernovae):
 
 	#Function to calculate RMSE, given a fit function
 	def calc_Rchi2(self, fit, degree=0):
-		flux_predictions = []
+		flux_predictions = np.empty(self.flux.shape) * np.nan
 		#loop to run 'leave one out' CV
 		for ind, f in enumerate(self.flux):
 			flux_del = np.delete(self.flux, ind)
@@ -100,9 +100,9 @@ class filter_lightcurve(Supernovae):
 			else:
 				Coeffs, Covar = curve_fit(fit, times_del, flux_del, self.kap_prior[self.band], bounds=self.kap_param_bounds)
 				ypred = fit(self.time[ind], Coeffs[0], Coeffs[1], Coeffs[2], Coeffs[3], Coeffs[4], Coeffs[5])
-			flux_predictions.append(ypred)
+			flux_predictions[ind] = ypred
 
-		flux_predictions = np.array(flux_predictions)
+		
 		
 		#Root Mean Square Error calculations
 		dif = (flux_predictions - self.flux)/self.flux_err
