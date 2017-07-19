@@ -22,9 +22,7 @@ class Supernovae:
 	def __init__(self, path):
 		self.name = os.path.splitext(os.path.basename(path))[0]
 		self.path = path
-		
-		
-
+	
 	def meta_data(self):
 		file_ = open(self.path)
 		data = json.load(file_)
@@ -51,6 +49,7 @@ class Supernovae:
 					keys[i] = int(keys[i])
 				Lightcurves[label] = filter_lightcurve(data.time.values, data.magnitude.values, data.e_magnitude.values, str(x[0]), keys, self.path)
 			self.Lightcurves = Lightcurves
+
 
 
 
@@ -181,7 +180,7 @@ class filter_lightcurve(Supernovae):
 		return f
 
 	# N degree polynomial fit and return RMSE
-	def polynomial_fit_plot(self, degree, plot=True):
+	def polynomial_fit_plot(self, degree, plot=False):
 		f = self.polynomial_func(degree)
 		if(plot):
 			bft = np.linspace(self.time[0], self.time[-1], 500)
@@ -224,7 +223,7 @@ class filter_lightcurve(Supernovae):
 		return first * (second / third)
 
 	#Plot kapernka best fit and return Rchi2
-	def Kapernka_fit_plot(self, plot=True):
+	def Kapernka_fit_plot(self, plot=False):
 		name = 'Kapernka'
 		if(plot):
 			fitCoeffs, Covars = curve_fit(self.Kapernka_func, self.time, self.flux, self.kap_prior[self.band], sigma=self.flux_err, bounds=self.kap_param_bounds)
@@ -250,7 +249,7 @@ class filter_lightcurve(Supernovae):
 		return first * (second / third)
 
 	#Plot Bazin best fit and return Rchi2
-	def Bazin_fit_plot(self, plot=True):
+	def Bazin_fit_plot(self, plot=False):
 		name = 'Bazin'
 		if(plot):
 			fitCoeffs, Covars = curve_fit(self.Bazin_func, self.time, self.flux, self.kap_prior[self.band], sigma=self.flux_err,  bounds=self.kap_param_bounds)
@@ -273,7 +272,7 @@ class filter_lightcurve(Supernovae):
 	
 
 
-	def Gaussian_process(self, kernel, plot=True):
+	def Gaussian_process(self, kernel, plot=False):
 		mean = np.mean(self.flux)
 		
 		gp = celerite.GP(kernel, mean=mean)
@@ -307,8 +306,7 @@ class filter_lightcurve(Supernovae):
 		plt.show()
 		return self.calc_Rchi2_GP(gp)
 
-	def serialize(self):
-		pass
+	
 		
 		
 
