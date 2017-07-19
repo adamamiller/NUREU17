@@ -8,6 +8,14 @@ import ntpath
 import json
 import pandas as pd
 import celerite
+import pickle 
+
+
+def deserialize(path):
+	pickle_in = open(path, "rb")
+	return pickle.load(pickle_in)
+
+
 
 class Supernovae:
 	
@@ -47,7 +55,13 @@ class Supernovae:
 
 
 	def serialize(self):
-		pass
+		pickle_out = open("../../../OSC_data/pickled_data/" + str(self.name) + ".pickle", "wb")
+		pickle.dump(self, pickle_out)
+		pickle_out.close()
+
+
+
+		
 
 
 					
@@ -94,7 +108,7 @@ class filter_lightcurve(Supernovae):
 	def calc_Rchi2_poly(self, degree):
 		flux_predictions = np.empty(self.flux.shape) * np.nan
 		#loop to run 'leave one out' CV
-		for ind, f in enumerate(self.flux):
+		for ind, c in enumerate(self.flux):
 			flux_del = np.delete(self.flux, ind)
 			time_del = np.delete(self.time, ind)
 			flux_err_del = np.delete(self.flux_err, ind)
@@ -105,8 +119,9 @@ class filter_lightcurve(Supernovae):
 		
 		#Root Mean Square Error calculations
 		dif = (flux_predictions - self.flux)/self.flux_err
+		
 		temp = np.sum(dif**2)
-		temp = temp / (len(self.flux) - 6)
+		temp = temp / (len(self.flux))
 		Rchi2 = np.sqrt(temp)
 		self.Rchi2['polynomial_' + str(degree)] = Rchi2
 		return Rchi2
@@ -123,9 +138,12 @@ class filter_lightcurve(Supernovae):
 			flux_predictions[ind] = ypred
 		
 		#Root Mean Square Error calculations
+
 		dif = (flux_predictions - self.flux)/self.flux_err
+		
+		
 		temp = np.sum(dif**2)
-		temp = temp / (len(self.flux) - 6)
+		temp = temp / (len(self.flux))
 		Rchi2 = np.sqrt(temp)
 		self.Rchi2[name] = Rchi2
 		return Rchi2
@@ -148,7 +166,7 @@ class filter_lightcurve(Supernovae):
 		#Root Mean Square Error calculations
 		dif = (flux_predictions - self.flux)/self.flux_err
 		temp = np.sum(dif**2)
-		temp = temp / (len(self.flux) - 6)
+		temp = temp / (len(self.flux))
 		Rchi2 = np.sqrt(temp)
 		self.Rchi2['GP'] = Rchi2
 		return Rchi2
@@ -171,10 +189,13 @@ class filter_lightcurve(Supernovae):
 			plt.errorbar(self.time, self.flux, yerr=self.flux_err, fmt='o', color='black', markersize=2.5, label='I band fit')
 			ax = plt.gca()
 			plt.legend(ncol=2)
+			
+			plt.xlim(0 - self.time[2], np.max(self.time) + 10)
 			plt.title(str(self.name) + ' ' + str(self.band) + ' band ' + str(degree) + ' degree ' + 'polynomial fit')
 			plt.xlabel('time (days)')
 			plt.ylabel('relative flux')
 			plt.show()
+		
 		return self.calc_Rchi2_poly(degree)
 	
 	#initialize kapernka functin paramater bounds, and priors
@@ -186,9 +207,10 @@ class filter_lightcurve(Supernovae):
 			'J' : [50, 20, 20, 50, 50, 50],
 			'B' : [50, 20, 20, 50, 50, 50],
 			'U' : [50, 20, 20, 50, 50, 50],
-			'V' : [50, 20, 20, 50, 50, 50],
+			'V' : [100, 20, 20, 50, 50, 50],
 			'W1' : [50, 20, 20, 50, 50, 50],
 			'Ic' : [50, 20, 20, 50, 50, 50],
+			'R' : [50, 20, 20, 50, 50, 50]
 
 		  }
 
@@ -213,7 +235,9 @@ class filter_lightcurve(Supernovae):
 			plt.plot(bft, bestfit_flux, color = 'blue', label ='best fit')
 			plt.xlabel('time (days)')
 			plt.ylabel('relative flux')
-			plt.title(str(self.name) + str( self.band) + ' band Kapernka fit')
+			plt.legend()
+			plt.xlim(0 - self.time[2], np.max(self.time) + 10)
+			plt.title(str(self.name) + " " + str( self.band) + ' band Kapernka fit')
 			plt.show()
 		return self.calc_Rchi2_func(self.Kapernka_func, name)
 
@@ -233,8 +257,12 @@ class filter_lightcurve(Supernovae):
 			bft = np.linspace(self.time[0], self.time[-1])
 			bestfit_flux = self.Bazin_func(bft, fitCoeffs[0], fitCoeffs[1], fitCoeffs[2], fitCoeffs[3], fitCoeffs[4],fitCoeffs[5])
 
+			
 			plt.errorbar(self.time, self.flux, yerr=self.flux_err, color='blue', label= self.band, fmt = 'o', markersize = 2.5)
+			
+			plt.xlim(0 - self.time[2], np.max(self.time))
 			plt.plot(bft, bestfit_flux, color = 'blue', label ='best fit')
+
 			plt.show()
 		return self.calc_Rchi2_func(self.Bazin_func, name)
 
@@ -256,24 +284,31 @@ class filter_lightcurve(Supernovae):
 		bounds = gp.get_parameter_bounds()
 		r = minimize(self.neg_log_like, initial_params, method="L-BFGS-B", bounds=bounds, args=(self.flux, gp))
 		gp.set_parameter_vector(r.x)
-		pred_mean, pred_var = gp.predict(self.flux, self.time, return_var=True)
+		#pred_mean, pred_var = gp.predict(self.flux, self.time, return_var=True)
 
-		x = np.linspace(self.time[0], self.time[-1], 10000)
+		x = np.linspace(self.time[0], self.time[-1], 1000)
+		pred_mean, pred_var = gp.predict(self.flux, x, return_var=True)
 		pred_std = np.sqrt(pred_var)
 		color = "#ff7f0e"
-		plt.figure()
-		plt.plot(self.time, pred_mean, label='GP model')
+		
+		plt.plot(x, pred_mean, label='GP model')
 		plt.errorbar(self.time, self.flux, fmt='o', yerr=self.flux_err, label= self.band + ' band', markersize= 2.5)
-		plt.fill_between(self.time, pred_mean+pred_std, pred_mean-pred_std, color=color, alpha=0.3,
-		                 edgecolor="none")
+		plt.fill_between(x, pred_mean+pred_std, pred_mean-pred_std, color=color, alpha=0.3,
+						 edgecolor="none")
 		plt.legend()
 		plt.title('')
 		plt.xlabel('time (days)')
 		plt.ylabel('relative flux')
+		
+		plt.ylim(min(pred_mean), max(pred_mean))
 
-		plt.title('SN2011fe ' + self.band + ' data')
+		plt.xlim(0 - self.time[2], np.max(self.time) + 10)
+		plt.title(self.name + ' ' + self.band + ' data')
 		plt.show()
 		return self.calc_Rchi2_GP(gp)
+
+	def serialize(self):
+		pass
 		
 		
 
