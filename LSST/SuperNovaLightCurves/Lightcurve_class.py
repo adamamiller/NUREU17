@@ -27,10 +27,17 @@ class Supernovae:
 		file_ = open(self.path)
 		data = json.load(file_)
 		self.references = pd.DataFrame((data[self.name]['sources']))
-		self.z = pd.DataFrame(data[self.name]['redshift']).value[0]
+		if('redshift' in data[self.name]):
+			self.z = pd.DataFrame(data[self.name]['redshift']).value[0]
+		else:
+			self.z = False
 		
 	def load_LightCurves(self):
 			df = JSON_to_DataFrame(self.path)
+			if(not isinstance(df, pd.DataFrame)):
+				return
+			if('band' not in df):
+				return
 			band_ref = df[['band', 'source']]
 			pairs = []
 			for row in band_ref.iterrows():
@@ -47,7 +54,11 @@ class Supernovae:
 				keys = np.array(x[1].split(','), dtype=int)
 				for i in range(len(keys)):
 					keys[i] = int(keys[i])
-				Lightcurves[label] = filter_lightcurve(data.time.values, data.magnitude.values, data.e_magnitude.values, str(x[0]), keys, self.path)
+				
+				if('e_magnitude' in data):
+					Lightcurves[label] = filter_lightcurve(data.time.values, data.magnitude.values, data.e_magnitude.values, str(x[0]), keys, self.path)
+				else:
+					Lightcurves[label] = filter_lightcurve(data.time.values, data.magnitude.values, 0, str(x[0]), keys, self.path)
 			self.Lightcurves = Lightcurves
 
 
