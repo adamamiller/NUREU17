@@ -2,11 +2,11 @@
 \fixlen = T
 \RowsRetrieved =               312
 \ORIGIN  = 'IPAC Infrared Science Archive (IRSA), Caltech/JPL'
-\DATETIME= '2017-07-19 14:14:02'
-\DataTag = 'ADS/IRSA.Gator#2017/0719/141402_14006'
+\DATETIME= '2017-07-27 09:57:03'
+\DataTag = 'ADS/IRSA.Gator#2017/0727/095703_31753'
 \DATABASE= 'PTF Lightcurve Table (ptf_lightcurves)'
 \EQUINOX = 'J2000'
-\StatusFile = '/workspace/TMP_OoDDBJ_14006/Gator/irsa/14006/log.14006.html'
+\StatusFile = '/workspace/TMP_WPGCEd_31753/Gator/irsa/31753/log.31753.html'
 \SQL     = 'WHERE  ((oid=51892060003794)) '
 \SQL     = 'SELECT (7 column names follow in next row.)'
 \ 
