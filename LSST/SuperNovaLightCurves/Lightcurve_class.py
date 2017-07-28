@@ -34,10 +34,10 @@ class Supernovae:
 		
 	def load_LightCurves(self):
 			df = JSON_to_DataFrame(self.path)
+			
 			if(not isinstance(df, pd.DataFrame)):
 				return
-			if('band' not in df):
-				return
+			
 			band_ref = df[['band', 'source']]
 			pairs = []
 			for row in band_ref.iterrows():
@@ -55,10 +55,22 @@ class Supernovae:
 				for i in range(len(keys)):
 					keys[i] = int(keys[i])
 				
-				if('e_magnitude' in data):
-					Lightcurves[label] = filter_lightcurve(data.time.values, data.magnitude.values, data.e_magnitude.values, str(x[0]), keys, self.path)
-				else:
-					Lightcurves[label] = filter_lightcurve(data.time.values, data.magnitude.values, 0, str(x[0]), keys, self.path)
+				if('e_magnitude' not in data):
+					continue
+				#rid data of points with nan values
+				data = data[np.invert(np.isnan(data.e_magnitude.values))]
+				data = data[np.invert(np.isnan(data.time.values))]
+				data = data[np.invert(np.isnan(data.magnitude.values))]
+				data = data[data.e_magnitude.values != 0]
+				
+				
+				if(len(data.time.values) == 0):
+					continue
+				n_good_obs = len(data.time.values)
+				Lightcurves[label] = filter_lightcurve(data.time.values, data.magnitude.values, data.e_magnitude.values, str(x[0]), keys, self.path, n_good_obs=n_good_obs)
+			
+			if(len(Lightcurves.keys())== 0):
+				return
 			self.Lightcurves = Lightcurves
 
 
@@ -78,14 +90,18 @@ class Supernovae:
 class filter_lightcurve(Supernovae):
 	#Lightcurve object constructor
 	
-	def __init__(self, time, mag , mag_err, band, keys, path, is_mag=True):
+	def __init__(self, time, mag , mag_err, band, keys, path, is_mag=True, n_good_obs=0):
 		#store time and band
 		super().__init__(path)
 		super().meta_data()
 		self.Rchi2 = {}
+
+		self.medians = {}
 		self.keys = keys
 		self.time = time
 		self.band = band
+		self.n_good_obs = n_good_obs
+		
 		#If data is passed as magnitudes, convert to flux
 		if(is_mag):
 			self.flux = self.mag_to_flux(mag)
@@ -134,6 +150,10 @@ class filter_lightcurve(Supernovae):
 		temp = temp / (len(self.flux))
 		Rchi2 = np.sqrt(temp)
 		self.Rchi2['polynomial_' + str(degree)] = Rchi2
+		
+		#median calculations
+		median = np.median(abs(dif))
+		self.medians['poly_' + str(degree)] = median
 		return Rchi2
 
 	def calc_Rchi2_func(self, fit, name):
@@ -143,7 +163,7 @@ class filter_lightcurve(Supernovae):
 			flux_del = np.delete(self.flux, ind)
 			time_del = np.delete(self.time, ind)
 			flux_err_del = np.delete(self.flux_err, ind)
-			Coeffs, Covar = curve_fit(fit, time_del, flux_del, self.kap_prior[self.band], sigma=flux_err_del, bounds=self.kap_param_bounds)
+			Coeffs, Covar = curve_fit(fit, time_del, flux_del, p0=self.kap_prior, sigma=flux_err_del, bounds=self.kap_param_bounds)
 			ypred = fit(self.time[ind], Coeffs[0], Coeffs[1], Coeffs[2], Coeffs[3], Coeffs[4], Coeffs[5])
 			flux_predictions[ind] = ypred
 		
@@ -156,6 +176,12 @@ class filter_lightcurve(Supernovae):
 		temp = temp / (len(self.flux))
 		Rchi2 = np.sqrt(temp)
 		self.Rchi2[name] = Rchi2
+
+
+		#median calculations
+		median = np.median(abs(dif))
+		self.medians[name] = median
+
 		return Rchi2
 
 	def calc_Rchi2_GP(self, gp):
@@ -175,10 +201,17 @@ class filter_lightcurve(Supernovae):
 		
 		#Root Mean Square Error calculations
 		dif = (flux_predictions - self.flux)/self.flux_err
+		median = np.median(abs(dif))
 		temp = np.sum(dif**2)
 		temp = temp / (len(self.flux))
 		Rchi2 = np.sqrt(temp)
+		
 		self.Rchi2['GP'] = Rchi2
+	
+		#median calculations
+		median = np.median(abs(dif))
+		self.medians['GP'] = median
+		
 		return Rchi2
 
 			
@@ -210,19 +243,8 @@ class filter_lightcurve(Supernovae):
 	
 	#initialize kapernka functin paramater bounds, and priors
 	kap_param_bounds = ([10*-5,10*-5,0,0,0,0], [1000,100,100,100,100,100])
-	kap_prior = {
-			'Rc' : [50, 20, 20, 50, 50, 50],
-			'g' : [50, 20, 20, 50, 50, 50],
-			'I' : [100, 20, 20, 50, 50, 50],
-			'J' : [50, 20, 20, 50, 50, 50],
-			'B' : [50, 20, 20, 50, 50, 50],
-			'U' : [50, 20, 20, 50, 50, 50],
-			'V' : [100, 20, 20, 50, 50, 50],
-			'W1' : [50, 20, 20, 50, 50, 50],
-			'Ic' : [50, 20, 20, 50, 50, 50],
-			'R' : [50, 20, 20, 50, 50, 50]
-
-		  }
+	kap_prior = [50, 20, 20, 50, 50, 50]
+			
 
 	#Kapernka model
 	def Kapernka_func(self, t, A, B, t_0, t_1, Tfall, Trise):
@@ -237,7 +259,7 @@ class filter_lightcurve(Supernovae):
 	def Kapernka_fit_plot(self, plot=False):
 		name = 'Kapernka'
 		if(plot):
-			fitCoeffs, Covars = curve_fit(self.Kapernka_func, self.time, self.flux, self.kap_prior[self.band], sigma=self.flux_err, bounds=self.kap_param_bounds)
+			fitCoeffs, Covars = curve_fit(self.Kapernka_func, self.time, self.flux, p0=self.kap_prior, sigma=self.flux_err, bounds=self.kap_param_bounds)
 			bft = np.linspace(self.time[0], self.time[-1])
 			bestfit_flux = self.Kapernka_func(bft, fitCoeffs[0], fitCoeffs[1], fitCoeffs[2], fitCoeffs[3], fitCoeffs[4],fitCoeffs[5])
 
@@ -263,7 +285,7 @@ class filter_lightcurve(Supernovae):
 	def Bazin_fit_plot(self, plot=False):
 		name = 'Bazin'
 		if(plot):
-			fitCoeffs, Covars = curve_fit(self.Bazin_func, self.time, self.flux, self.kap_prior[self.band], sigma=self.flux_err,  bounds=self.kap_param_bounds)
+			fitCoeffs, Covars = curve_fit(self.Bazin_func, self.time, self.flux, p0=self.kap_prior, sigma=self.flux_err,  bounds=self.kap_param_bounds)
 			bft = np.linspace(self.time[0], self.time[-1])
 			bestfit_flux = self.Bazin_func(bft, fitCoeffs[0], fitCoeffs[1], fitCoeffs[2], fitCoeffs[3], fitCoeffs[4],fitCoeffs[5])
 
@@ -296,25 +318,27 @@ class filter_lightcurve(Supernovae):
 		gp.set_parameter_vector(r.x)
 		#pred_mean, pred_var = gp.predict(self.flux, self.time, return_var=True)
 
-		x = np.linspace(self.time[0], self.time[-1], 1000)
-		pred_mean, pred_var = gp.predict(self.flux, x, return_var=True)
-		pred_std = np.sqrt(pred_var)
-		color = "#ff7f0e"
-		
-		plt.plot(x, pred_mean, label='GP model')
-		plt.errorbar(self.time, self.flux, fmt='o', yerr=self.flux_err, label= self.band + ' band', markersize= 2.5)
-		plt.fill_between(x, pred_mean+pred_std, pred_mean-pred_std, color=color, alpha=0.3,
-						 edgecolor="none")
-		plt.legend()
-		plt.title('')
-		plt.xlabel('time (days)')
-		plt.ylabel('relative flux')
-		
-		plt.ylim(min(pred_mean), max(pred_mean))
 
-		plt.xlim(0 - self.time[2], np.max(self.time) + 10)
-		plt.title(self.name + ' ' + self.band + ' data')
-		plt.show()
+		if(plot):
+			x = np.linspace(self.time[0], self.time[-1], 1000)
+			pred_mean, pred_var = gp.predict(self.flux, x, return_var=True)
+			pred_std = np.sqrt(pred_var)
+			color = "#ff7f0e"
+			
+			plt.plot(x, pred_mean, label='GP model')
+			plt.errorbar(self.time, self.flux, fmt='o', yerr=self.flux_err, label= self.band + ' band', markersize= 2.5)
+			plt.fill_between(x, pred_mean+pred_std, pred_mean-pred_std, color=color, alpha=0.3,
+							 edgecolor="none")
+			plt.legend()
+			plt.title('')
+			plt.xlabel('time (days)')
+			plt.ylabel('relative flux')
+			
+			plt.ylim(min(pred_mean), max(pred_mean))
+
+			plt.xlim(0 - self.time[2], np.max(self.time) + 10)
+			plt.title(self.name + ' ' + self.band + ' data')
+			plt.show()
 		return self.calc_Rchi2_GP(gp)
 
 	
