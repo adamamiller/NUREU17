@@ -15,29 +15,31 @@ def JSON_to_DataFrame(source):
 	#grab supernovae name frome source file
 	SN_name = os.path.splitext(os.path.basename(source))[0]
 
-	#grab only the photometry elements from data
+	#If there are no photometric elements, ignore 
 	if('photometry' not in json_data[SN_name]):
 		return 
+	#grab only the photometry elements from data
 	photometry = json_data[SN_name]['photometry']
 	
 	#rid the data where 'upperlimit' is true
 	photometry_clean = [x for x in photometry if 'upperlimit' not in x]
 	
-	#photometry_clean = [x for x in photometry_clean if 'e_magnitude' in x]
+	#minimum number of elements needed for analysis 
 	
-	if(len(photometry_clean) == 0):
-		return
-
 	#initialize and create a dataframe out of photometry data
 	DF = pd.DataFrame(photometry_clean)
 	
+	#If bands arent specified, ignore
+	if('band' not in DF):
+		return
+	
 	DF.index.name = "Observation"
 	
+	#Reduce DF to these columns, only if they exist
 	DF = DF.loc[:, DF.columns.isin(['time', 'magnitude', 'e_magnitude', 'e_upper_magnitude', 'e_lower_magnitude', 'band', 'source', 'telescope'])]
+	
+
 	#convert numerical quantities from strings to floats
-	
-	
-	
 	DF.time = DF.time.apply(float)
 	if('magnitude' in DF.columns):
 		DF.magnitude = DF.magnitude.apply(float)
