@@ -1,11 +1,11 @@
 """ lightCurve.py 
 
-    This purpose of this program is to produce phase-folded light curves (with error bars) 
-    using data downloaded from the Caltech IRSA website.
+    This purpose of this program is to produce light curves with error bars (phase-folded and non-phase-folded 
+    [i.e. the raw data]) using data downloaded from the Caltech IRSA website.
     
     Language: Python 3
 
-    Tanner Leighton
+    Tanner Leighton, Adam Miller
 
     Written for CIERA Summer Internship - Variable Star Classification 
     Northwestern University
@@ -23,7 +23,9 @@ def printFrequency(dataTable):
             IRSA website
     """
 
-    features_to_use = ["freq1_freq"]
+    # freq1_amplitude1: Get the amplitude of the jth harmonic of the ith frequency from a fitted Lomb-Scargle model.
+
+    features_to_use = ["freq1_freq", "amplitude", "freq1_amplitude1"]
 
     fset_cesium = featurize.featurize_time_series(times=dataTable["obsmjd"],
                                                   values=dataTable["mag_autocorr"],
@@ -31,11 +33,11 @@ def printFrequency(dataTable):
                                                   features_to_use=features_to_use)
                                                 
     print(fset_cesium)
-  
-def plotLightCurve(dataTable, period):
+
+def plotLightCurves(dataTable, period):
     """ This is a fully general light curve plotting function that works with the dataTable
-        downloaded from the Caltech IRSA website to produce phase-folded light curves with 
-        error bars for each oid.
+        downloaded from the Caltech IRSA website to produce phase-folded light curves and non-phase-folded
+        light curves (i.e. the raw data) with error bars for each observation.
 
         Caltech IRSA website: http://irsa.ipac.caltech.edu/cgi-bin/Gator/nph-scan?projshort=PTF
 
@@ -50,6 +52,8 @@ def plotLightCurve(dataTable, period):
     oids = dataTable["oid"]
     fids = dataTable["fid"]
 
+    # color_dict = {"g": "MediumAquaMarine", "R": "FireBrick"}
+
     length = len(oids)  
     oidsArray = np.empty(length)
 
@@ -61,7 +65,6 @@ def plotLightCurve(dataTable, period):
 
     fmtToBeUsed = 'ro'
 
-    # Let's make a variable called index (to represent the index of a list) and set it equal to 0.
     index = 0
     swapVar = 0
     tempOID = 0
@@ -74,12 +77,24 @@ def plotLightCurve(dataTable, period):
         indexesTempOID = np.where(dataTable[3][:] == tempOID)
         fmtToBeUsedNumber = fids[indexesTempOID[0][0]]
 
+        # Filter identifier (1 = g; 2 = R)
         if fmtToBeUsedNumber == 2:
             fmtToBeUsed = 'ro'
         else:
             fmtToBeUsed = 'go'
 
-        # phase-folding
+        # returns figure object and axis object
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize = (8,8), gridspec_kw = {'height_ratios':[1, 3]})
+        
+        # raw light curve
+        ax1.errorbar(times[indexesTempOID], values[indexesTempOID], yerr=errors[indexesTempOID], fmt=fmtToBeUsed, 
+            markersize=3, mec="k", mew=0.59)
+        ax1.set_ylim(ax1.get_ylim()[::-1])
+        ax1.set_title("Light Curve for Object {} (raw data)".format(tempOID))
+        ax1.set_xlabel("time")
+        ax1.set_ylabel("brightness (mag)")
+            
+        # phase-folded light curve
         tempLength = len(indexesTempOID[0])
         timesTemp = np.empty(tempLength)
         timesPhaseFolded = np.empty(tempLength)
@@ -91,13 +106,14 @@ def plotLightCurve(dataTable, period):
         timesPhaseFoldedPlusOne = np.empty(tempLength)
         for j in range(tempLength):
             timesPhaseFoldedPlusOne[j] = timesPhaseFolded[j]+1
-
-        plt.errorbar(timesPhaseFolded, values[indexesTempOID], yerr=errors[indexesTempOID], fmt=fmtToBeUsed, markersize=3)
-        plt.errorbar(timesPhaseFoldedPlusOne, values[indexesTempOID], yerr=errors[indexesTempOID], fmt=fmtToBeUsed, markersize=3)
-        plt.gca().invert_yaxis() 
-        plt.title("Light Curve for Object {}".format(tempOID))
-        plt.xlabel("phase")
-        plt.ylabel("brightness (mag)")
+        ax2.errorbar(timesPhaseFolded, values[indexesTempOID], yerr=errors[indexesTempOID], fmt=fmtToBeUsed, 
+            markersize=3, mec="k", mew=0.59)
+        ax2.set_ylim(ax2.get_ylim()[::-1]) # reversing the y-axis as desired  
+        ax2.set_title("Light Curve for Object {} (phase-folded)".format(tempOID))
+        ax2.set_xlabel("phase")
+        ax2.set_ylabel("brightness (mag)")
+        
+        fig.tight_layout()
         plt.show()
         
         index += 1
@@ -113,12 +129,8 @@ if __name__ == '__main__':
     printFrequency(dataTable)
     frequency = float(input("Enter the frequency: "))
     period = 1/frequency
-    plotLightCurve(dataTable, period)
-    print("period:", period)
-
-
-
-    
+    plotLightCurves(dataTable, period)
+    print("'period':", period)
     
    
 
