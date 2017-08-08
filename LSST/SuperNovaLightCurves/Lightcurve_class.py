@@ -11,6 +11,27 @@ import celerite
 import pickle 
 
 
+
+#Create Kernels for Gaussian Process
+
+#Real term parameter initialization
+a = 1e-4
+c = 1
+#Matern term parameter initialization
+sig = 1e-2
+rho = 100
+
+#Bounds on parameters 
+bounds = dict(log_a = (-15,15), log_c = (-15,15))
+bounds = dict(log_sigma = (-15, 15), log_rho = (-15, 15))
+
+#Create Kernels
+Real_Kernel = celerite.terms.RealTerm(log_a = np.log(a), log_c = np.log(c), bounds=bounds)
+Matern_Kernel = celerite.terms.Matern32Term(log_sigma = np.log(sig), log_rho = np.log(rho))
+
+
+
+
 def deserialize(path):
 	pickle_in = open(path, "rb")
 	return pickle.load(pickle_in)
@@ -18,6 +39,24 @@ def deserialize(path):
 
 
 class Supernovae:
+	#Create Kernels for Gaussian Process
+
+	#Real term parameter initialization
+	a = 1e-4
+	c = 1
+	#Matern term parameter initialization
+	sig = 1e-2
+	rho = 100
+
+	#Bounds on parameters 
+	bounds = dict(log_a = (-15,15), log_c = (-15,15))
+	bounds2 = dict(log_sigma = (-15, 15), log_rho = (-15, 15))
+
+	#Create Kernels
+	Real_Kernel = celerite.terms.RealTerm(log_a = np.log(a), log_c = np.log(c), bounds=bounds)
+	Matern_Kernel = celerite.terms.Matern32Term(log_sigma = np.log(sig), log_rho = np.log(rho))
+
+
 	
 	def __init__(self, path):
 		self.name = os.path.splitext(os.path.basename(path))[0]
@@ -34,8 +73,9 @@ class Supernovae:
 		
 	def load_LightCurves(self):
 			df = JSON_to_DataFrame(self.path)
-			
+			Lightcurves = {}
 			if(not isinstance(df, pd.DataFrame)):
+				self.Lightcurves = Lightcurves
 				return
 			
 			band_ref = df[['band', 'source']]
@@ -46,7 +86,7 @@ class Supernovae:
 				element = (row[1]['band'], row[1]['source'])
 				if(element not in pairs):
 					pairs.append(element)
-			Lightcurves = {}
+			
 			for x in pairs:
 				data = df[df.band == x[0]]
 				data = data[data.source == x[1]]
@@ -69,10 +109,26 @@ class Supernovae:
 				n_good_obs = len(data.time.values)
 				Lightcurves[label] = filter_lightcurve(data.time.values, data.magnitude.values, data.e_magnitude.values, str(x[0]), keys, self.path, n_good_obs=n_good_obs)
 			
-			if(len(Lightcurves.keys())== 0):
-				return
+			
 			self.Lightcurves = Lightcurves
 
+
+	def load_fit_data(self):
+		for key in self.Lightcurves.keys():
+			#Ensure there are a sufficient amount of data points to run fits
+			if(self.Lightcurves[key].n_good_obs <= 6):
+				continue
+			print(self.name, key)
+			#Run fits
+			self.Lightcurves[key].polynomial_fit_plot(4, plot=False)
+			self.Lightcurves[key].polynomial_fit_plot(6, plot=False)
+			self.Lightcurves[key].polynomial_fit_plot(8, plot=False)
+			self.Lightcurves[key].Kapernka_fit_plot(plot=False)
+			self.Lightcurves[key].Bazin_fit_plot(plot=False)
+			
+			self.Lightcurves[key].Gaussian_process(Real_Kernel, plot=False)
+			self.Lightcurves[key].Gaussian_process(Matern_Kernel, plot=False)
+			print(self.Lightcurves[key].Rchi2, self.Lightcurves[key].medians)
 
 
 
@@ -104,10 +160,14 @@ class filter_lightcurve(Supernovae):
 		
 		#If data is passed as magnitudes, convert to flux
 		if(is_mag):
-			self.flux = self.mag_to_flux(mag)
+			max_flux = np.max(self.mag_to_flux(mag))
+			#Normalize by maximum flux
+			self.flux = self.mag_to_flux(mag) / max_flux 
+			
 			self.flux_err = self.mag_err_to_flux_err(mag_err, self.flux)
 		else:
-			self.flux = mag
+			max_flux = np.max(mag)
+			self.flux = mag / max_flux
 			self.flux_err = mag_err
 		#shift start times to start at zero 
 		self.time = self.time - min(self.time)
@@ -125,6 +185,8 @@ class filter_lightcurve(Supernovae):
 	#returns sources 
 	def get_sources(self):
 		return self.references.iloc[self.keys - 1, 2].values
+
+
 		
 
 
@@ -132,7 +194,7 @@ class filter_lightcurve(Supernovae):
 
 	#Function to calculate RMSE, given a fit function
 	def calc_Rchi2_poly(self, degree):
-		flux_predictions = np.empty(self.flux.shape) * np.nan
+		flux_predictions = np.empty(self.flux.shape) 
 		#loop to run 'leave one out' CV
 		for ind, c in enumerate(self.flux):
 			flux_del = np.delete(self.flux, ind)
@@ -156,14 +218,17 @@ class filter_lightcurve(Supernovae):
 		self.medians['poly_' + str(degree)] = median
 		return Rchi2
 
+	
+
 	def calc_Rchi2_func(self, fit, name):
-		flux_predictions = np.empty(self.flux.shape) * np.nan
+		flux_predictions = np.empty(self.flux.shape) 
 		#loop to run 'leave one out' CV
 		for ind, f in enumerate(self.flux):
 			flux_del = np.delete(self.flux, ind)
 			time_del = np.delete(self.time, ind)
 			flux_err_del = np.delete(self.flux_err, ind)
-			Coeffs, Covar = curve_fit(fit, time_del, flux_del, p0=self.kap_prior, sigma=flux_err_del, bounds=self.kap_param_bounds)
+			Coeffs, Covar = curve_fit(fit, time_del, flux_del, sigma=flux_err_del, bounds = self.kap_param_bounds, maxfev=1000000)
+			
 			ypred = fit(self.time[ind], Coeffs[0], Coeffs[1], Coeffs[2], Coeffs[3], Coeffs[4], Coeffs[5])
 			flux_predictions[ind] = ypred
 		
@@ -185,8 +250,13 @@ class filter_lightcurve(Supernovae):
 		return Rchi2
 
 	def calc_Rchi2_GP(self, gp):
-		flux_predictions = np.empty(self.flux.shape) * np.nan
+		flux_predictions = np.empty(self.flux.shape)
 		#loop to run 'leave one out' CV
+		if(type(gp.kernel) == celerite.terms.RealTerm):
+			name = 'Real'
+		elif(type(gp.kernel) == celerite.terms.Matern32Term):
+			name = 'Matern'
+		print(name)
 		for ind, f in enumerate(self.flux):
 			flux_del = np.delete(self.flux, ind)
 			time_del = np.delete(self.time, ind)
@@ -198,7 +268,7 @@ class filter_lightcurve(Supernovae):
 			gp.set_parameter_vector(r.x)
 			ypred, pred_var = gp.predict(flux_del, self.time[ind], return_var=True)
 			flux_predictions[ind] = ypred
-		
+		print(flux_predictions)
 		#Root Mean Square Error calculations
 		dif = (flux_predictions - self.flux)/self.flux_err
 		median = np.median(abs(dif))
@@ -206,13 +276,13 @@ class filter_lightcurve(Supernovae):
 		temp = temp / (len(self.flux))
 		Rchi2 = np.sqrt(temp)
 		
-		self.Rchi2['GP'] = Rchi2
+		self.Rchi2['GP' + '_' + name] = Rchi2
 	
 		#median calculations
 		median = np.median(abs(dif))
-		self.medians['GP'] = median
+		self.medians['GP' + '_' + name] = median
 		
-		return Rchi2
+		
 
 			
 			
@@ -259,10 +329,10 @@ class filter_lightcurve(Supernovae):
 	def Kapernka_fit_plot(self, plot=False):
 		name = 'Kapernka'
 		if(plot):
-			fitCoeffs, Covars = curve_fit(self.Kapernka_func, self.time, self.flux, p0=self.kap_prior, sigma=self.flux_err, bounds=self.kap_param_bounds)
+			fitCoeffs, Covars = curve_fit(self.Kapernka_func, self.time, self.flux,  sigma=self.flux_err, maxfev=1000000)
 			bft = np.linspace(self.time[0], self.time[-1])
 			bestfit_flux = self.Kapernka_func(bft, fitCoeffs[0], fitCoeffs[1], fitCoeffs[2], fitCoeffs[3], fitCoeffs[4],fitCoeffs[5])
-
+	
 			plt.errorbar(self.time, self.flux, yerr=self.flux_err, color='blue', label= self.band, fmt = 'o', markersize = 2.5)
 			plt.plot(bft, bestfit_flux, color = 'blue', label ='best fit')
 			plt.xlabel('time (days)')
@@ -284,12 +354,12 @@ class filter_lightcurve(Supernovae):
 	#Plot Bazin best fit and return Rchi2
 	def Bazin_fit_plot(self, plot=False):
 		name = 'Bazin'
-		if(plot):
-			fitCoeffs, Covars = curve_fit(self.Bazin_func, self.time, self.flux, p0=self.kap_prior, sigma=self.flux_err,  bounds=self.kap_param_bounds)
+		if(plot): 
+			fitCoeffs, Covars = curve_fit(self.Bazin_func, self.time, self.flux, sigma=self.flux_err,  bounds=self.kap_param_bounds, maxfev=1000000)
 			bft = np.linspace(self.time[0], self.time[-1])
 			bestfit_flux = self.Bazin_func(bft, fitCoeffs[0], fitCoeffs[1], fitCoeffs[2], fitCoeffs[3], fitCoeffs[4],fitCoeffs[5])
-
-			
+			max_flux = np.max(bestfit_flux)
+			bestfit_flux = bestfit_flux/max_flux
 			plt.errorbar(self.time, self.flux, yerr=self.flux_err, color='blue', label= self.band, fmt = 'o', markersize = 2.5)
 			
 			plt.xlim(0 - self.time[2], np.max(self.time))
