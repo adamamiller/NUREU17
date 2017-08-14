@@ -131,7 +131,7 @@
        "        return MozWebSocket;\n",
        "    } else {\n",
        "        alert('Your browser does not have WebSocket support.' +\n",
-       "              'Please try Chrome, Safari or Firefox β‰¥ 6. ' +\n",
+       "              'Please try Chrome, Safari or Firefox τω¥ 6. ' +\n",
        "              'Firefox 4 and 5 are also supported but you ' +\n",
        "              'have to enable WebSockets in about:config.');\n",
        "    };\n",
@@ -939,22 +939,22 @@
      "name": "stdout",
      "output_type": "stream",
      "text": [
-
-
-
+<<<<<<< HEAD
+      "Hello world\n"
+=======
       "Adam is a better teacher than Aaron\n"
       "my code is the best.\n"
-
+>>>>>>> d95a245cfdd805349faa5a70a0bf58fb42b1a5cc
      ]
     }
    ],
    "source": [
-
-
-
+<<<<<<< HEAD
+    "print(\"Hello world\")"
+=======
     "print(\"Adam is a better teacher than Aaron\")"
-
-
+    "print(\"my code is the best.\")"
+>>>>>>> d95a245cfdd805349faa5a70a0bf58fb42b1a5cc
    ]
   },
   {
