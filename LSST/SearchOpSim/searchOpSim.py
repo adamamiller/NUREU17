@@ -7,7 +7,7 @@
 import sqlite3
 import numpy as np
 
-from astropy.coordinates import SkyCoord, match_coordinates_sky
+from astropy.coordinates import SkyCoord
 from astropy import units
 
 
@@ -22,7 +22,7 @@ def getFieldID(db, inRA, inDec, deglim = 3.5/2.):
 	dbCoord = SkyCoord(ra = RA*units.degree, dec = Dec*units.degree, frame='icrs')
 	inCoord = SkyCoord(ra = inRA*units.degree, dec = inDec*units.degree, frame='icrs')
 
-	imin, sep2d, dist3d = match_coordinates_sky(inCoord, dbCoord)
+	imin, sep2d, dist3d = inCoord.match_to_catalog_sky(dbCoord)
 
 	dbID = (c[imin,0]).astype('int') 
 
