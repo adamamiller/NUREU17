@@ -102,3 +102,10 @@ ENV/
 
 #table files
 *.tbl
+
+#sqlite database
+*.db
+
+#varstar plots
+*.png
+
